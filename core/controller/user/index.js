@@ -1,7 +1,7 @@
 const fs = require("fs");
 
 module.exports = {
-  addUser(username) {
+  async addUser(username) {
     const fileName = `${Date.now()}.txt`;
 
     // if (!fs.existsSync(fileName)) {

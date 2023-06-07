@@ -62,11 +62,17 @@ class KoaRouter {
    */
   router() {
     // 返回真实的中间件
+    console.log(this.routesHandler);
     return async (ctx, next) => {
+      if (ctx.body) {
+        // 如果有路由已经完成 直接终止后续的路由
+        return await next();
+      }
+
       const { path, method } = ctx.request; // 获取传递过来的请求路径及方法
+      console.log(this.prefix, path, method);
 
       if (!this.routesHandler.has(method)) {
-        ctx.body = `没有实现${method}:${path}方法`;
         return await next();
       }
 
@@ -83,15 +89,19 @@ class KoaRouter {
           console.log("matched", matched);
           ctx.params = matched.params;
           try {
-            return await handler(ctx);
+            let result = await handler(ctx);
+            console.log(result);
+            ctx.body = result;
+            return;
           } catch (error) {
             ctx.status = 500;
             ctx.body = error;
+            console.error(error);
           }
         }
       }
 
-      ctx.body = `没有实现${method}:${path}方法`;
+      // ctx.body = `${method}:${path}接口未定义`;
       return await next();
     };
   }

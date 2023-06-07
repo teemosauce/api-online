@@ -1,4 +1,11 @@
-const routers = [require("./user"), require("./file")];
+const routers = [
+  require("./user"),
+  require("./file"),
+  require("./api"),
+  require("./workspace"),
+  require("./workspace/xyoFHPWSLqboVSw_Quyzi")
+];
+
 module.exports = {
   /**
    * 把所有的路由挂载到app实例上
