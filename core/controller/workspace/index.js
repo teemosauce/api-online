@@ -6,7 +6,7 @@ const Result = require("../../utils/result");
 module.exports = {
   async createWorkspace(ctx) {
     const { workspaceDir } = ctx.request;
-    const workspaceName = nanoid();
+    const workspaceName = nanoid().toLowerCase();
     const workspaceNameDir = path.resolve(workspaceDir, workspaceName);
     const result = new Result();
     if (!fs.existsSync(workspaceNameDir)) {

@@ -1,4 +1,5 @@
 const { pathToRegexp, match } = require("path-to-regexp");
+const vm = require("node:vm");
 /**
  * 简单实现一个路由中间件
  */
@@ -38,6 +39,8 @@ class KoaRouter {
    */
   request(method = "GET", url = "", handler) {
     // 把所有的注册先缓存起来
+
+    method = method.toUpperCase();
     let routeHandler = this.routesHandler.get(method);
     if (!routeHandler) {
       routeHandler = new Map(); // 定义不同方法类型的map
@@ -55,6 +58,10 @@ class KoaRouter {
     routeHandler.set(url, handler); // 将请求路径和处理方法进行缓存
   }
 
+  addRoute(method = "GET", url = "", handler) {
+    this.request(method, url, handler);
+  }
+
   /**
    * 返回真实的路由中间件
    *
@@ -62,8 +69,8 @@ class KoaRouter {
    */
   router() {
     // 返回真实的中间件
-    console.log(this.routesHandler);
     return async (ctx, next) => {
+      console.log(this.routesHandler);
       if (ctx.body) {
         // 如果有路由已经完成 直接终止后续的路由
         return await next();
@@ -88,15 +95,61 @@ class KoaRouter {
           // 匹配到的话 取出参数放到ctx上面 并终止循环
           console.log("matched", matched);
           ctx.params = matched.params;
-          try {
-            let result = await handler(ctx);
-            console.log(result);
-            ctx.body = result;
+
+          let result;
+          if (typeof handler == "string" || typeof handler == "object") {
+            // 自定义的处理函数 要在安全沙箱中运行，以避免出现超时等安全问题
+            let script;
+            if (typeof handler != "object") {
+              // 把用户的代码包装一下
+              const wrapCode = `
+              'use strict';
+              async function run(ctx, callback) {
+                try {
+                  ${handler}
+                  callback(ctx.body);
+                } catch(err) {
+                  callback(err);
+                }
+              }
+              run(ctx, callback);
+              `;
+
+              script = new vm.Script(wrapCode);
+              routeHandler.set(regexp, script);
+            } else {
+              script = handler;
+            }
+
+            // script.runInContext()
+            let context = {
+              ctx,
+              callback(result) {
+                console.log("result:", result);
+              },
+            };
+            try {
+              await script.runInNewContext(context, {
+                timeout: 2000,
+              });
+            } catch (err) {
+              ctx.body = {
+                err,
+                message: "自定义接口超时",
+                success: false,
+              };
+            }
             return;
-          } catch (error) {
-            ctx.status = 500;
-            ctx.body = error;
-            console.error(error);
+          } else {
+            try {
+              result = await handler(ctx);
+              ctx.body = result;
+              return;
+            } catch (error) {
+              ctx.status = 500;
+              ctx.body = error;
+              console.error(error);
+            }
           }
         }
       }

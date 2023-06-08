@@ -1,9 +1,13 @@
-POST http://localhost:8999/api/create HTTP/1.1
+# POST http://localhost:8999/api/create HTTP/1.1
 
-Content-Type: application/json
+# content-type: application/json
+# {   
+#     "method": "get",
+#     "workspace": "xyoFHPWSLqboVSw_Quyzi",
+#     "url": "/test",
+#     "handler": "async function(ctx){ ctx.body = \"HelloWorld!\" }"
+# }
 
-{   
-    "workspace": "xyoFHPWSLqboVSw_Quyzi",
-    "url": "test",
-    "handler": "async function(ctx){ ctx.body = \"HelloWorld!\" }"
-}
+GET http://localhost:8999/xyoFHPWSLqboVSw_Quyzi/apis/list HTTP/1.1
+
+# GET http://localhost:8999/xyoFHPWSLqboVSw_Quyzi/apis/1/info HTTP/1.1

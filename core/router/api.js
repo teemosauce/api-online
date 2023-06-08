@@ -1,34 +1,98 @@
-const fs = require("fs");
+const fse = require("fs-extra");
 const KoaRouter = require("../middleware/koa@router");
 
 const Result = require("../utils/result");
 
-const router = new KoaRouter("/api");
+const router = new KoaRouter("/:workspace/apis");
 const path = require("path");
 
 router.post("/create", async (ctx) => {
   const { workspaceDir, body } = ctx.request;
-  const { workspace: workspaceName, method, url, handler } = body;
+  const { workspace: workspaceName } = ctx.params;
+  const { method, url, handler } = body;
 
   const workspaceNameDir = path.resolve(workspaceDir, workspaceName);
   const result = new Result();
 
-  if (!fs.existsSync(workspaceDir)) {
+  if (!fse.existsSync(workspaceDir)) {
     return result.setMessage("创建api失败，工作空间不存在！").toJSON();
   }
-  const routerFile = path.resolve(workspaceNameDir, "index.js");
+  const package = path.resolve(workspaceNameDir, "package.json");
 
-  if (!fs.existsSync(routerFile)) {
-    let content = `
-const KoaRouter = require("../../../middleware/koa@router");
-const router = new KoaRouter("/${workspaceName}");
-router.${method}("${url}", ${handler});
-module.exports = router.router();
-    `;
-    fs.writeFileSync(routerFile, content, 'utf-8');
+  let routes = [];
+  if (fse.existsSync(package)) {
+    // 存在的话编辑文件 采用读取文件的方式或者require
+    const content = await fse.readJSON(package, {
+      encoding: "utf-8",
+    });
+    routes = content.routes;
   }
 
+  // 添加最新的路由信息
+  routes.push({
+    method,
+    url,
+    handler,
+  });
+
+  const packageJson = {
+    workspace: workspaceName,
+    routes,
+  };
+  await fse.writeJson(package, packageJson, {
+    encoding: "utf-8",
+  });
+
   result.setSuccess(true).setMessage("添加api成功");
+  return result.toJSON();
+});
+
+router.get("/list", async (ctx) => {
+  const { workspaceDir } = ctx.request;
+  const { workspace: workspaceName } = ctx.params;
+  const workspaceNameDir = path.resolve(workspaceDir, workspaceName);
+  const package = path.resolve(workspaceNameDir, "package.json");
+  let routes = [];
+  if (fse.existsSync(package)) {
+    // 存在的话编辑文件 采用读取文件的方式或者require
+    const content = await fse.readJSON(package, {
+      encoding: "utf-8",
+    });
+    routes = content.routes;
+  }
+
+  let result = new Result();
+  result.setSuccess(true).setData(routes);
+  result.setMessage("获取全部API成功");
+
+  return result.toJSON();
+});
+
+router.get("/:id/info", async (ctx) => {
+  const { workspaceDir } = ctx.request;
+  const { workspace: workspaceName, id } = ctx.params;
+  const workspaceNameDir = path.resolve(workspaceDir, workspaceName);
+  const package = path.resolve(workspaceNameDir, "package.json");
+  let routes = [];
+  if (fse.existsSync(package)) {
+    // 存在的话编辑文件 采用读取文件的方式或者require
+
+    
+    console.log(package)
+    const content = await fse.readJSON(package, {
+      encoding: "utf-8",
+    });
+    routes = content.routes;
+  }
+  let route = routes[id];
+  let result = new Result();
+  if (route) {
+    route.url = `/${workspaceName}${route.url}`;
+    result.setSuccess(true).setData(route);
+    result.setMessage("获取API成功");
+  } else {
+    result.setMessage("API不存在");
+  }
   return result.toJSON();
 });
 
