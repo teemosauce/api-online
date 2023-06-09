@@ -5,11 +5,12 @@ const Result = require("../utils/result");
 
 const router = new KoaRouter("/:workspace/apis");
 const path = require("path");
+const RouterManager = require("./index");
 
 router.post("/create", async (ctx) => {
   const { workspaceDir, body } = ctx.request;
   const { workspace: workspaceName } = ctx.params;
-  const { method, url, handler } = body;
+  const { method, url, code } = body;
 
   const workspaceNameDir = path.resolve(workspaceDir, workspaceName);
   const result = new Result();
@@ -32,7 +33,7 @@ router.post("/create", async (ctx) => {
   routes.push({
     method,
     url,
-    handler,
+    code,
   });
 
   const packageJson = {
@@ -43,7 +44,14 @@ router.post("/create", async (ctx) => {
     encoding: "utf-8",
   });
 
+  RouterManager.addRoute(workspaceName, {
+    method,
+    url,
+    code,
+  }); // 创建完之后直接加入到根路由中间件中
+
   result.setSuccess(true).setMessage("添加api成功");
+  result.setData({ method, url, code });
   return result.toJSON();
 });
 
@@ -77,8 +85,7 @@ router.get("/:id/info", async (ctx) => {
   if (fse.existsSync(package)) {
     // 存在的话编辑文件 采用读取文件的方式或者require
 
-    
-    console.log(package)
+    console.log(package);
     const content = await fse.readJSON(package, {
       encoding: "utf-8",
     });

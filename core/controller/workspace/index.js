@@ -11,7 +11,9 @@ module.exports = {
     const result = new Result();
     if (!fs.existsSync(workspaceNameDir)) {
       fs.mkdirSync(workspaceNameDir);
-      result.setSuccess(true).setMessage("生成工作空间成功！").setData(name);
+      result.setSuccess(true).setMessage("生成工作空间成功！").setData({
+        name: workspaceName
+      });
     } else {
       result.setMessage("生成工作空间失败！");
     }

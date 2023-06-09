@@ -7,6 +7,44 @@ const vm = require("node:vm");
 const METHODS = ["GET", "POST", "PUT", "DELETE"]; // 这里就简单定义一个get和post
 
 const MATCH_FUNCTION_CACHE = Object.create(null);
+
+/**
+ * 包装代码
+ * @param {string} code 用户编写的代码
+ * @returns 包装后的代码
+ *
+ * 示例:
+ * 源码:
+ *  ctx.body = "Hello World"
+ * 包装后:
+ * 'use strict';
+ * (async function(ctx, callback){
+ *    try {
+ *        ctx.body = "Hello World"
+ *        callback(ctx.body)
+ *    } catch (err) {
+ *        callback(err.message)
+ *    }
+ *
+ * })(ctx, callback)
+ */
+
+function wrapCode(code) {
+  return `
+  'use strict';
+  (async function(ctx) {
+    try {
+      ${code}
+    } catch(err) {
+      ctx.body = {
+        message: err,
+        success: false,
+      }
+    }
+  })(ctx)
+  `;
+}
+
 class KoaRouter {
   routesHandler = new Map();
 
@@ -93,49 +131,37 @@ class KoaRouter {
 
         if (matched) {
           // 匹配到的话 取出参数放到ctx上面 并终止循环
-          console.log("matched", matched);
+          // console.log("matched", matched);
           ctx.params = matched.params;
-
+          console.log(matched, handler);
           let result;
           if (typeof handler == "string" || typeof handler == "object") {
             // 自定义的处理函数 要在安全沙箱中运行，以避免出现超时等安全问题
             let script;
-            if (typeof handler != "object") {
+            if (typeof handler == "string") {
               // 把用户的代码包装一下
-              const wrapCode = `
-              'use strict';
-              async function run(ctx, callback) {
-                try {
-                  ${handler}
-                  callback(ctx.body);
-                } catch(err) {
-                  callback(err);
-                }
-              }
-              run(ctx, callback);
-              `;
-
-              script = new vm.Script(wrapCode);
+              const code = wrapCode(handler);
+              script = new vm.Script(code);
               routeHandler.set(regexp, script);
             } else {
               script = handler;
             }
 
-            // script.runInContext()
-            let context = {
+            const context = {
               ctx,
-              callback(result) {
-                console.log("result:", result);
-              },
             };
             try {
               await script.runInNewContext(context, {
                 timeout: 2000,
               });
+              ctx.body = {
+                success: true,
+                message: "自定义API调用成功",
+                data: ctx.body,
+              };
             } catch (err) {
               ctx.body = {
-                err,
-                message: "自定义接口超时",
+                message: err,
                 success: false,
               };
             }
@@ -145,10 +171,10 @@ class KoaRouter {
               result = await handler(ctx);
               ctx.body = result;
               return;
-            } catch (error) {
+            } catch (err) {
               ctx.status = 500;
-              ctx.body = error;
-              console.error(error);
+              ctx.body = err;
+              console.error(err);
             }
           }
         }
