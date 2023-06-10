@@ -6,7 +6,7 @@ const vm = require("node:vm");
 
 const METHODS = ["GET", "POST", "PUT", "DELETE"]; // 这里就简单定义一个get和post
 
-const MATCH_FUNCTION_CACHE = Object.create(null);
+const matchFunctionCached = new Map();
 
 /**
  * 包装代码
@@ -17,31 +17,33 @@ const MATCH_FUNCTION_CACHE = Object.create(null);
  * 源码:
  *  ctx.body = "Hello World"
  * 包装后:
- * 'use strict';
- * (async function(ctx, callback){
- *    try {
- *        ctx.body = "Hello World"
- *        callback(ctx.body)
- *    } catch (err) {
- *        callback(err.message)
- *    }
- *
- * })(ctx, callback)
+   'use strict';
+   (async function(ctx) {
+    try {
+       ctx.$body = "Hello World"
+     } catch (err) {
+       ctx.$body = {
+         $catch: 1, 
+         message: err.stack,
+        }
+    }
+  })(ctx)
  */
 
 function wrapCode(code) {
-  return `
-  'use strict';
-  (async function(ctx) {
-    try {
-      ${code}
-    } catch(err) {
-      ctx.body = {
-        message: err,
-        success: false,
-      }
+  // 先把ctx.body替换成私有的$body
+  code = code.replace(/ctx\.body/g, "ctx.$body");
+  return `'use strict';
+(async function(ctx) {
+  try {
+    ${code}
+  } catch(err) {
+    ctx.$body = {
+      $catch: 1,  
+      message: err.stack,
     }
-  })(ctx)
+  }
+})(ctx);
   `;
 }
 
@@ -88,18 +90,55 @@ class KoaRouter {
     url = this.prefix + url;
     // const regexp = pathToRegexp(url); // 转换成正则表达式
 
-    MATCH_FUNCTION_CACHE[url] =
-      MATCH_FUNCTION_CACHE[url] ||
-      match(url, {
+    if (!matchFunctionCached.has(url)) {
+      const fn = match(url, {
         decode: decodeURIComponent,
       });
+      matchFunctionCached.set(url, fn);
+    }
     routeHandler.set(url, handler); // 将请求路径和处理方法进行缓存
   }
 
-  addRoute(method = "GET", url = "", handler) {
+  /**
+   * 添加路由
+   * @param {object} route 路由对象信息
+   */
+  addRoute(route) {
+    let { workspace, method = "GET", url, code: handler } = route;
+    url = `/${workspace}${url}`;
     this.request(method, url, handler);
   }
+  /**
+   * 移除指定路由
+   * @param {object} route 路由信息
+   * @returns
+   */
+  removeRoute(route) {
+    let { workspace, method = "GET", url } = route;
+    url = `/${workspace}${url}`;
+    method = method.toUpperCase();
+    let routeHandler = this.routesHandler.get(method);
+    if (!routeHandler) {
+      return;
+    }
+    url = this.prefix + url;
+    if (matchFunctionCached.has(url)) {
+      matchFunctionCached.delete(url);
+    }
+    routeHandler.delete(url);
+  }
 
+  /**
+   * 先简单实现
+   * @param {object} oldRoute  旧路由信息
+   * @param {object} newRoute 新路由信息
+   */
+  replaceRoute(oldRoute, newRoute) {
+    // if (oldRoute.workspace !== newRoute.workspace) {
+    this.removeRoute(oldRoute);
+    this.addRoute(newRoute);
+    // }
+  }
   /**
    * 返回真实的路由中间件
    *
@@ -107,15 +146,14 @@ class KoaRouter {
    */
   router() {
     // 返回真实的中间件
+    console.log(this.prefix, this.routesHandler);
     return async (ctx, next) => {
-      console.log(this.routesHandler);
       if (ctx.body) {
         // 如果有路由已经完成 直接终止后续的路由
         return await next();
       }
 
       const { path, method } = ctx.request; // 获取传递过来的请求路径及方法
-      console.log(this.prefix, path, method);
 
       if (!this.routesHandler.has(method)) {
         return await next();
@@ -126,43 +164,72 @@ class KoaRouter {
       // 这里简单的只是做了全路由的匹配，实际上是需要支持路由的形式 后续再支持/:k/user/:id的问题 /near/user/1
 
       for (let [regexp, handler] of routeHandler) {
-        const matchFunction = MATCH_FUNCTION_CACHE[regexp];
+        const matchFunction = matchFunctionCached.get(regexp);
         let matched = matchFunction(path);
 
         if (matched) {
           // 匹配到的话 取出参数放到ctx上面 并终止循环
           // console.log("matched", matched);
           ctx.params = matched.params;
-          console.log(matched, handler);
           let result;
           if (typeof handler == "string" || typeof handler == "object") {
             // 自定义的处理函数 要在安全沙箱中运行，以避免出现超时等安全问题
             let script;
             if (typeof handler == "string") {
               // 把用户的代码包装一下
+              console.log("*********code start************");
+              console.log("=============== source code ===============");
+              console.log(handler);
               const code = wrapCode(handler);
-              script = new vm.Script(code);
-              routeHandler.set(regexp, script);
+              console.log("=============== wrap code ===============");
+              console.log(code);
+              console.log("*********code end************");
+
+              try {
+                script = new vm.Script(code);
+              } catch (err) {
+                ctx.body = {
+                  success: true,
+                  message: "自定义API执行完成",
+                  data: err.stack.replace(/ctx\.\$body/g, "ctx.body"),
+                };
+                return;
+              }
+              if (script) {
+                routeHandler.set(regexp, script);
+              }
             } else {
               script = handler;
             }
-
+            ctx.$body = null;
             const context = {
               ctx,
             };
+            console.log(script.cachedData);
             try {
               await script.runInNewContext(context, {
                 timeout: 2000,
               });
-              ctx.body = {
-                success: true,
-                message: "自定义API调用成功",
-                data: ctx.body,
-              };
             } catch (err) {
               ctx.body = {
-                message: err,
-                success: false,
+                success: true,
+                message: "自定义API执行完成",
+                data: err,
+              };
+              return;
+            }
+            if (ctx.$body && ctx.$body.$catch) {
+              // 用户代码有异常
+              ctx.body = {
+                success: true,
+                message: "自定义API执行完成",
+                data: ctx.$body.message,
+              };
+            } else {
+              ctx.body = {
+                success: true,
+                message: "自定义API执行完成",
+                data: ctx.$body,
               };
             }
             return;

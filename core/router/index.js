@@ -2,16 +2,29 @@ const { readdirSync, existsSync } = require("fs");
 const path = require("path");
 const KoaRouter = require("../middleware/koa@router");
 
-const rootRouter = new KoaRouter("/myspace");
+const rootRouter = new KoaRouter("/workspace");
 /**
  * 在根路由中间件中添加一个指定工作空间的路由信息
  *
  * @param {string} workspace 指定工作空间
  * @param {object} route 路由信息
  */
-function addRouteToRootRouter(workspace, { method, url, code }) {
-  rootRouter.addRoute(method, `/${workspace}${url}`, code);
+function addRoute(workspace, route) {
+  route.workspace = workspace;
+  rootRouter.addRoute(route);
 }
+
+function replaceRoute(workspace, oldRoute, newRoute) {
+  oldRoute.workspace = workspace;
+  newRoute.workspace = workspace;
+  rootRouter.replaceRoute(oldRoute, newRoute);
+}
+
+function removeRoute(workspace, route) {
+  route.workspace = workspace;
+  rootRouter.removeRoute(route);
+}
+
 // 提前导出 防止递归依赖问题
 module.exports = {
   /**
@@ -23,16 +36,10 @@ module.exports = {
       app.use(router);
     });
   },
-  addRoute: addRouteToRootRouter,
+  addRoute,
+  replaceRoute,
+  removeRoute,
 };
-
-const routers = [
-  rootRouter.router(),
-  require("./user"),
-  require("./file"),
-  require("./api"),
-  require("./workspace"),
-];
 
 const WORKSPACE_DIR = path.resolve(__dirname, "workspace");
 const workspaceNameList = readdirSync(WORKSPACE_DIR, {
@@ -46,12 +53,20 @@ workspaceNameList.forEach((dirent) => {
     const pkg = require(package);
     const { routes } = pkg;
     routes.forEach((route) => {
-      addRouteToRootRouter(workspaceName, route);
+      addRoute(workspaceName, route);
     });
   } else {
     console.error(`没有找到${package}.`);
   }
 });
+
+const routers = [
+  require("./user"),
+  require("./file"),
+  require("./api"),
+  require("./workspace"),
+  rootRouter.router(),
+];
 
 // 由于app.listen 调用后 不能再添加新的中间件 所以不能把第三方自定义路由注册为中间件
 // 只能弄一个根路由的中间件 ，在中间件内再添加路由信息
