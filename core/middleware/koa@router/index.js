@@ -1,4 +1,4 @@
-const { pathToRegexp, match } = require("path-to-regexp");
+const { match } = require("path-to-regexp");
 const vm = require("node:vm");
 /**
  * 简单实现一个路由中间件
@@ -189,8 +189,8 @@ class KoaRouter {
                 script = new vm.Script(code);
               } catch (err) {
                 ctx.body = {
-                  success: true,
-                  message: "自定义API执行完成",
+                  success: false,
+                  message: "API执行失败",
                   data: err.stack.replace(/ctx\.\$body/g, "ctx.body"),
                 };
                 return;
@@ -205,48 +205,46 @@ class KoaRouter {
             const context = {
               ctx,
             };
-            console.log(script.cachedData);
+
+            let success = false;
+            let data;
             try {
               await script.runInNewContext(context, {
                 timeout: 2000,
               });
+              success = true;
             } catch (err) {
+              success = false;
+              data = err;
+            } finally {
+              if (success) {
+                if (ctx.$body && ctx.$body.$catch) {
+                  // 用户代码有异常
+                  success = false;
+                  data = ctx.$body.message;
+                } else {
+                  success = true;
+                  data = ctx.$body;
+                }
+              }
               ctx.body = {
-                success: true,
-                message: "自定义API执行完成",
-                data: err,
+                success,
+                message: success ? "API执行成功" : "API执行失败",
+                data,
               };
               return;
             }
-            if (ctx.$body && ctx.$body.$catch) {
-              // 用户代码有异常
-              ctx.body = {
-                success: true,
-                message: "自定义API执行完成",
-                data: ctx.$body.message,
-              };
-            } else {
-              ctx.body = {
-                success: true,
-                message: "自定义API执行完成",
-                data: ctx.$body,
-              };
-            }
-            return;
           } else {
             try {
-              result = await handler(ctx);
-              ctx.body = result;
+              ctx.body = await handler(ctx);
               return;
             } catch (err) {
               ctx.status = 500;
               ctx.body = err;
-              console.error(err);
             }
           }
         }
       }
-
       // ctx.body = `${method}:${path}接口未定义`;
       return await next();
     };
