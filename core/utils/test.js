@@ -1,10 +1,13 @@
-let a = new Map()
+let methods = ['POST', 'GET']
 
-a.set("b", 10)
-a.set("c", 20)
-for(let key of a.keys()) {
-    console.log(key)
-    if (key == 'b') {
-        break
-    }
-} 
+let _ = []
+for (let method of methods) {
+
+  let len =  _.push(method)
+  if (method == 'GET') {
+    _.unshift('HEAD')
+    console.log(111)
+  }
+}
+
+console.log(_)

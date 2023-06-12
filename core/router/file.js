@@ -1,8 +1,10 @@
-const KoaRouter = require("../middleware/koa@router");
-const router = new KoaRouter("/file");
+const KoaRouter = require("../middleware/Router");
+const router = new KoaRouter({
+  prefix: "/file",
+});
 
-router.get((ctx) => {
+router.get("/", (ctx) => {
   ctx.body = "文件测试接口";
 });
 
-module.exports = router.router();
+module.exports = router.routes();

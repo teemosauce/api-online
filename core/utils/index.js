@@ -14,7 +14,6 @@ function getWorkspace() {
  * @returns
  */
 function getWorkspaceByName(name) {
-  console.log("namee == ", name);
   return path.resolve(getWorkspace(), name);
 }
 

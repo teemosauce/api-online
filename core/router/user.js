@@ -1,6 +1,8 @@
-const KoaRouter = require("../middleware/koa@router");
+const KoaRouter = require("../middleware/Router");
 const { addUser } = require("../controller/user");
-const router = new KoaRouter("/user");
+const router = new KoaRouter({
+  prefix: "/user",
+});
 
 const Result = require("../utils/result");
 router.post("/add", (ctx) => {
@@ -34,4 +36,4 @@ router.get("/add", async (ctx) => {
   return result;
 });
 
-module.exports = router.router();
+module.exports = router.routes();

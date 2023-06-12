@@ -1,42 +1,13 @@
-const fse = require("fs-extra");
 const { match } = require("path-to-regexp");
 const Result = require("../../utils/result");
 const RouterManager = require("../../router/index");
 const { nanoid } = require("nanoid");
-const utils = require("../../utils");
-
-function validateWorkspace(name) {
-  const workspace = utils.getWorkspaceByName(name);
-  return fse.existsSync(workspace);
-}
-
-function validatePackageJson(name) {
-  const packageJSON = utils.getWorkspacePackageJSON(name);
-  return fse.existsSync(packageJSON);
-}
-
-async function readPackageJSON(name) {
-  const packageJSON = utils.getWorkspacePackageJSON(name);
-
-  const content = await fse.readJSON(packageJSON, {
-    encoding: "utf-8",
-  });
-  return content.routes;
-}
-
-async function writePackageJSON(name, content) {
-  const packageJSON = utils.getWorkspacePackageJSON(name);
-
-  if (Array.isArray(content)) {
-    content = {
-      workspace: name,
-      routes: content,
-    };
-  }
-  return await fse.writeJson(packageJSON, content, {
-    encoding: "utf-8",
-  });
-}
+const {
+  readPackageJSON,
+  validateWorkspace,
+  validatePackageJson,
+  writePackageJSON,
+} = require("../../utils/workspace");
 
 /**
  * 判断url是否冲突
@@ -45,7 +16,7 @@ async function writePackageJSON(name, content) {
  * @param {*} url
  */
 async function exist(name, id, method, url) {
-  const routes = await readPackageJSON(name);
+  const { routes } = await readPackageJSON(name);
   const route = routes.find((route) => {
     if (id == route.id) {
       return false;
@@ -87,7 +58,7 @@ module.exports = {
       return result.setMessage("创建api失败，url冲突！").toJSON();
     }
 
-    const routes = await readPackageJSON(workspace);
+    const { routes } = await readPackageJSON(workspace);
 
     // 添加最新的路由信息
     const newRoute = {
@@ -98,7 +69,10 @@ module.exports = {
     };
     routes.push(newRoute);
 
-    await writePackageJSON(workspace, routes);
+    await writePackageJSON(workspace, {
+      workspace,
+      routes,
+    });
 
     RouterManager.addRoute(workspace, newRoute); // 创建完之后直接加入到根路由中间件中
 
@@ -123,7 +97,7 @@ module.exports = {
       return result.setMessage("编辑api失败，url冲突！").toJSON();
     }
 
-    const routes = await readPackageJSON(workspace);
+    const { routes } = await readPackageJSON(workspace);
 
     const index = routes.findIndex((route) => {
       return route.id == id;
@@ -143,9 +117,12 @@ module.exports = {
     // 移除旧的 并添加新的
     routes.splice(index, 1, newRoute);
 
-    await writePackageJSON(workspace, routes);
+    await writePackageJSON(workspace, {
+      workspace,
+      routes,
+    });
 
-    RouterManager.replaceRoute(workspace, oldRoute, newRoute); // 创建完之后直接加入到根路由中间件中
+    RouterManager.addRoute(workspace, newRoute); // 创建完之后直接加入到根路由中间件中
 
     result.setSuccess(true).setData(newRoute);
     return result.setMessage("编辑api成功").toJSON();
@@ -163,7 +140,7 @@ module.exports = {
       return result.setMessage("查询api失败，工作空间异常！").toJSON();
     }
 
-    const routes = await readPackageJSON(workspace);
+    const { routes } = await readPackageJSON(workspace);
 
     const route = routes.find((route) => route.id == id);
 
@@ -188,12 +165,13 @@ module.exports = {
       return result.setMessage("查询api失败，工作空间异常！").toJSON();
     }
 
-    const routes = await readPackageJSON(workspace);
+    const { routes } = await readPackageJSON(workspace);
     routes.forEach((route) => {
       route.workspace = workspace;
     });
 
     result.setSuccess(true).setData(routes);
+    
     return result.setMessage("获取全部API成功").toJSON();
   },
 
@@ -209,7 +187,7 @@ module.exports = {
       return result.setMessage("删除api失败，工作空间异常！").toJSON();
     }
 
-    const routes = await readPackageJSON(workspace);
+    const { routes } = await readPackageJSON(workspace);
 
     const index = routes.findIndex((route) => route.id == id);
 
@@ -220,7 +198,10 @@ module.exports = {
     const route = routes[index];
     routes.splice(index, 1);
 
-    await writePackageJSON(workspace, routes);
+    await writePackageJSON(workspace, {
+      workspace,
+      routes,
+    });
 
     RouterManager.removeRoute(workspace, route); // 创建完之后直接加入到根路由中间件中
 

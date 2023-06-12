@@ -1,6 +1,8 @@
-const KoaRouter = require("../middleware/koa@router");
-const router = new KoaRouter("/:workspace/apis");
-const APIController = require('../controller/api')
+const KoaRouter = require("../middleware/Router");
+const router = new KoaRouter({
+  prefix: "/:workspace/apis",
+});
+const APIController = require("../controller/api");
 
 router.post("/create", APIController.create);
 
@@ -12,4 +14,4 @@ router.get("/:id/info", APIController.getById);
 
 router.delete("/:id", APIController.remove);
 
-module.exports = router.router();
+module.exports = router.routes();
