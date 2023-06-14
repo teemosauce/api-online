@@ -131,7 +131,7 @@ async function loadWorkspace() {
         addRoute(workspace, route);
       });
     } else {
-      console.error(`没有找到${packageJson}.`);
+      console.error(`没有找到${workspace}的package.json.`);
     }
   });
 }

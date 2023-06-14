@@ -1,22 +1,34 @@
-const fs = require("fs");
+const fse = require("fs-extra");
 const path = require("path");
 const { nanoid } = require("nanoid");
 const Result = require("../../utils/result");
+const {
+  getWorkspace,
+  validateWorkspace,
+  getWorkspaceByName,
+  writePackageJSON,
+} = require("../../utils/workspace");
 
 module.exports = {
   async createWorkspace(ctx) {
-    const { workspaceDir } = ctx.request;
+    const workspaceHome = getWorkspace();
     const workspaceName = nanoid().toLowerCase();
-    const workspaceNameDir = path.resolve(workspaceDir, workspaceName);
+    const workspaceNameDir = getWorkspaceByName(workspaceName);
     const result = new Result();
-    if (!fs.existsSync(workspaceNameDir)) {
-      fs.mkdirSync(workspaceNameDir);
-      result.setSuccess(true).setMessage("生成工作空间成功！").setData({
-        name: workspaceName
-      });
-    } else {
-      result.setMessage("生成工作空间失败！");
-    }
-    return result.toJSON();
+
+    // 生成空间
+    await fse.mkdir(workspaceNameDir);
+
+    // 生成空间内的package.json
+    await writePackageJSON(workspaceName, {
+      workspace: workspaceName,
+      routes: [],
+    });
+
+    result.setSuccess(true).setData({
+      name: workspaceName,
+    });
+
+    return result.setMessage("生成工作空间成功！");
   },
 };

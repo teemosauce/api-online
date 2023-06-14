@@ -107,24 +107,23 @@ module.exports = {
       return result.setMessage("编辑api失败，api不存在！");
     }
 
-    const oldRoute = routes[index];
-    const newRoute = {
+    const route = {
       id: id,
       method,
       url,
       code,
     };
     // 移除旧的 并添加新的
-    routes.splice(index, 1, newRoute);
+    routes.splice(index, 1, route);
 
     await writePackageJSON(workspace, {
       workspace,
       routes,
     });
 
-    RouterManager.addRoute(workspace, newRoute); // 创建完之后直接加入到根路由中间件中
+    RouterManager.addRoute(workspace, route); // 创建完之后直接加入到根路由中间件中
 
-    result.setSuccess(true).setData(newRoute);
+    result.setSuccess(true).setData(route);
     return result.setMessage("编辑api成功");
   },
 

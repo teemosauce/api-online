@@ -33,11 +33,10 @@ app.use(async (ctx, next) => {
     if (result instanceof Result) {
       result = result.toJSON();
     }
+    ctx.body = result;
   } else {
-    result = new Result().setSuccess(true).toJSON();
+    // result = new Result().setMessage("接口未实现").toJSON();
   }
-  ctx.body = result;
-  
 });
 
 // 所有的路由中间件
@@ -47,7 +46,6 @@ router.mount(app);
 app.use(async (ctx, next) => {
   console.log("最后一个");
   ctx.response.status = 404;
-  ctx.body = `404`;
 });
 
 let PORT = 8999;
