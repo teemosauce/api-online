@@ -1,10 +1,10 @@
 {
   "name": "api-online",
   "version": "1.0.0",
-  "description": "",
+  "description": "一个在线编写、测试api的小工具",
   "main": "index.js",
   "scripts": {
-    "start": "node app.js"
+    "start": "nodemon app.js"
   },
   "keywords": [],
   "author": "",
@@ -18,5 +18,8 @@
     "only": "^0.0.2",
     "path-to-regexp": "^6.2.1",
     "safe-eval": "^0.4.1"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
   }
 }

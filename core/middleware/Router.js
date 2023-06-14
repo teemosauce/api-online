@@ -5,11 +5,14 @@ const Layer = require("@koa/router/lib/layer");
 class Router extends KoaRouter {
   register(path, methods, middleware, opts = {}) {
     const { stack: layers } = this;
-
     if (Array.isArray(path)) {
       return super.register(path, methods, middleware, opts);
     }
 
+    if (opts.sensitive || this.opts.sensitive) {
+        return super.register(path, methods, middleware, opts);
+    }
+    
     const route = new Layer(path, methods, middleware, {
       end: opts.end === false ? opts.end : true,
       name: opts.name,

@@ -47,15 +47,15 @@ module.exports = {
     const result = new Result();
 
     if (!validateWorkspace(workspace)) {
-      return result.setMessage("创建api失败，工作空间不存在！").toJSON();
+      return result.setMessage("创建api失败，工作空间不存在！");
     }
 
     if (!validatePackageJson(workspace)) {
-      return result.setMessage("创建api失败，工作空间异常！").toJSON();
+      return result.setMessage("创建api失败，工作空间异常！");
     }
 
     if (await exist(workspace, "", method, url)) {
-      return result.setMessage("创建api失败，url冲突！").toJSON();
+      return result.setMessage("创建api失败，url冲突！");
     }
 
     const { routes } = await readPackageJSON(workspace);
@@ -77,7 +77,7 @@ module.exports = {
     RouterManager.addRoute(workspace, newRoute); // 创建完之后直接加入到根路由中间件中
 
     result.setSuccess(true).setData(newRoute);
-    return result.setMessage("添加api成功").toJSON();
+    return result.setMessage("添加api成功");
   },
 
   async update(ctx) {
@@ -86,15 +86,15 @@ module.exports = {
     const result = new Result();
 
     if (!validateWorkspace(workspace)) {
-      return result.setMessage("编辑api失败，工作空间不存在！").toJSON();
+      return result.setMessage("编辑api失败，工作空间不存在！");
     }
 
     if (!validatePackageJson(workspace)) {
-      return result.setMessage("编辑api失败，工作空间异常！").toJSON();
+      return result.setMessage("编辑api失败，工作空间异常！");
     }
 
     if (await exist(workspace, id, method, url)) {
-      return result.setMessage("编辑api失败，url冲突！").toJSON();
+      return result.setMessage("编辑api失败，url冲突！");
     }
 
     const { routes } = await readPackageJSON(workspace);
@@ -104,7 +104,7 @@ module.exports = {
     });
 
     if (index < 0) {
-      return result.setMessage("编辑api失败，api不存在！").toJSON();
+      return result.setMessage("编辑api失败，api不存在！");
     }
 
     const oldRoute = routes[index];
@@ -125,7 +125,7 @@ module.exports = {
     RouterManager.addRoute(workspace, newRoute); // 创建完之后直接加入到根路由中间件中
 
     result.setSuccess(true).setData(newRoute);
-    return result.setMessage("编辑api成功").toJSON();
+    return result.setMessage("编辑api成功");
   },
 
   async getById(ctx) {
@@ -133,11 +133,11 @@ module.exports = {
     const result = new Result();
 
     if (!validateWorkspace(workspace)) {
-      return result.setMessage("查询api失败，工作空间不存在！").toJSON();
+      return result.setMessage("查询api失败，工作空间不存在！");
     }
 
     if (!validatePackageJson(workspace)) {
-      return result.setMessage("查询api失败，工作空间异常！").toJSON();
+      return result.setMessage("查询api失败，工作空间异常！");
     }
 
     const { routes } = await readPackageJSON(workspace);
@@ -145,12 +145,12 @@ module.exports = {
     const route = routes.find((route) => route.id == id);
 
     if (!route) {
-      return result.setMessage("API不存在").toJSON();
+      return result.setMessage("API不存在");
     }
     route.workspace = workspace;
 
     result.setSuccess(true).setData(route);
-    return result.setMessage("获取API成功").toJSON();
+    return result.setMessage("获取API成功");
   },
 
   async list(ctx) {
@@ -158,11 +158,11 @@ module.exports = {
     let result = new Result();
 
     if (!validateWorkspace(workspace)) {
-      return result.setMessage("查询api失败，工作空间不存在！").toJSON();
+      return result.setMessage("查询api失败，工作空间不存在！");
     }
 
     if (!validatePackageJson(workspace)) {
-      return result.setMessage("查询api失败，工作空间异常！").toJSON();
+      return result.setMessage("查询api失败，工作空间异常！");
     }
 
     const { routes } = await readPackageJSON(workspace);
@@ -172,7 +172,7 @@ module.exports = {
 
     result.setSuccess(true).setData(routes);
     
-    return result.setMessage("获取全部API成功").toJSON();
+    return result.setMessage("获取全部API成功");
   },
 
   async remove(ctx) {
@@ -180,11 +180,11 @@ module.exports = {
     const result = new Result();
 
     if (!validateWorkspace(workspace)) {
-      return result.setMessage("删除api失败，工作空间不存在！").toJSON();
+      return result.setMessage("删除api失败，工作空间不存在！");
     }
 
     if (!validatePackageJson(workspace)) {
-      return result.setMessage("删除api失败，工作空间异常！").toJSON();
+      return result.setMessage("删除api失败，工作空间异常！");
     }
 
     const { routes } = await readPackageJSON(workspace);
@@ -192,7 +192,7 @@ module.exports = {
     const index = routes.findIndex((route) => route.id == id);
 
     if (index < 0) {
-      return result.setMessage("删除api失败，api不存在！").toJSON();
+      return result.setMessage("删除api失败，api不存在！");
     }
 
     const route = routes[index];
@@ -206,6 +206,6 @@ module.exports = {
     RouterManager.removeRoute(workspace, route); // 创建完之后直接加入到根路由中间件中
 
     result.setSuccess(true).setData(route);
-    return result.setMessage("删除api成功").toJSON();
+    return result.setMessage("删除api成功");
   },
 };

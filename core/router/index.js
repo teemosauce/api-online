@@ -1,5 +1,5 @@
 const fse = require("fs-extra");
-const KoaRouter = require("../middleware/Router");
+const KoaRouter = require("@koa/router");
 const {
   readPackageJSON,
   validatePackageJson,
@@ -7,48 +7,12 @@ const {
 } = require("../utils/workspace");
 const Result = require("../utils/result");
 const vm = require("node:vm");
+const { wrapCode } = require("../utils");
 
 const rootRouter = new KoaRouter({
   prefix: "/workspace",
+  exclusive: true, // 如果路由一致，则只匹配最后一次添加进去的路由
 });
-
-/**
- * 包装代码
- * @param {string} code 用户编写的代码
- * @returns 包装后的代码
- *
- * 示例:
- * 源码:
- *  ctx.body = "Hello World"
- * 包装后:
-   'use strict';
-   (async function(ctx) {
-    try {
-       ctx.$body = "Hello World"
-     } catch (err) {
-       ctx.$body = {
-         $catch: 1, 
-         message: err.stack,
-        }
-    }
-  })(ctx)
- */
-
-function wrapCode(code) {
-  // 先把ctx.body替换成私有的$$body
-  code = code.replace(/ctx\.body/g, "ctx._body_");
-  return `'use strict';
-  (async function(ctx) {
-    try {
-      ${code}
-    } catch(err) {
-      ctx._body_ = {
-        _catch_: err.stack,  
-      }
-    }
-  })(ctx);
-    `;
-}
 
 /**
  * 在根路由中间件中添加一个指定工作空间的路由信息
@@ -81,14 +45,15 @@ function addRoute(workspace, route) {
           handler.script = new vm.Script(scriptCode);
         } catch (err) {
           result.setData(err.stack.replace(/ctx\._body_/g, "ctx.body"));
-          return result.setMessage("API执行失败").toJSON();
+          return result.setMessage("自定义API执行失败");
         }
       }
 
       console.log("-----------开始执行自定义API--------------");
-      ctx.$$body = null;
+      const SYMBOL_ERROR_KEY = Symbol("Symbol.error");
       const context = {
         ctx,
+        SYMBOL_ERROR: SYMBOL_ERROR_KEY,
       };
 
       try {
@@ -96,18 +61,24 @@ function addRoute(workspace, route) {
           timeout: 2000,
         });
 
-        if (ctx._body_ && ctx._body_._catch_) {
+        // if (ctx._body_ && ctx._body_._catch_) {
+        //   // 用户代码有异常
+        //   result.setData(ctx._body_._catch_).setMessage("API执行失败");
+        // } else {
+        //   result.setSuccess(true).setData(ctx._body_);
+        // }
+
+        if (ctx[SYMBOL_ERROR_KEY]) {
           // 用户代码有异常
-          result.setData(ctx._body_._catch_).setMessage("API执行失败");
+          result.setData(ctx[SYMBOL_ERROR_KEY].stack).setMessage("自定义API执行失败");
         } else {
-          result.setSuccess(true).setData(ctx._body_);
+          result.setSuccess(true).setData(ctx.body);
         }
       } catch (err) {
-        result.setData(err).setMessage("API执行失败");
+        result.setData(err).setMessage("自定义API执行失败");
       }
       console.log("-----------自定义API执行完毕--------------");
-      console.log(result);
-      return result.toJSON();
+      return result;
     });
   }
 
@@ -152,9 +123,7 @@ async function loadWorkspace() {
     withFileTypes: true,
   });
 
-  console.log(workspaceNameList);
   workspaceNameList.forEach(async (dirent) => {
-    console.log("dirent, ", dirent);
     const { name: workspace } = dirent;
     if (await validatePackageJson(workspace)) {
       let { routes } = await readPackageJSON(workspace);
@@ -170,10 +139,8 @@ async function loadWorkspace() {
 loadWorkspace();
 
 const routers = [
-  require("./user"),
-  require("./file"),
-  require("./api"),
   require("./workspace"),
+  require("./api"),
   rootRouter.routes(),
 ];
 

@@ -1,4 +1,4 @@
-const KoaRouter = require("../middleware/Router");
+const KoaRouter = require("@koa/router");
 const WorkspaceController = require("../controller/workspace");
 
 const router = new KoaRouter({
