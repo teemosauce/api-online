@@ -139,6 +139,7 @@ async function loadWorkspace() {
 loadWorkspace();
 
 const routers = [
+  require('./test'),
   require("./workspace"),
   require("./api"),
   rootRouter.routes(),
