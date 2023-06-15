@@ -5,7 +5,7 @@ const Result = require("./core/utils/result");
 const app = new Koa();
 const static = require('koa-static')
 const conditional = require('koa-conditional-get') // 走协商缓存时 判断文件是否新鲜 是否有变化
-const etag = require('koa-etag')
+const etag = require('koa-etag') // 生成文件的唯一tag标识
 const responseTime = require('koa-response-time')
 
 
