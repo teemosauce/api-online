@@ -6,12 +6,12 @@ const APIController = require("../controller/api");
 
 router.post("/create", APIController.create);
 
-router.put("/:id", APIController.update);
+// router.put("/:id", APIController.update);
 
-router.get("/list", APIController.list);
+router.get("/", APIController.findAllByWorkspace);
 
-router.get("/:id/info", APIController.getById);
+// router.get("/:id/info", APIController.getById);
 
-router.delete("/:id", APIController.remove);
+// router.delete("/:id", APIController.remove);
 
 module.exports = router.routes();

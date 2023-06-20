@@ -3,12 +3,14 @@ const router = require("./core/router/index");
 const { koaBody } = require("koa-body");
 const Result = require("./core/utils/result");
 const app = new Koa();
-const static = require('koa-static')
-const conditional = require('koa-conditional-get') // 走协商缓存时 判断文件是否新鲜 是否有变化
-const etag = require('koa-etag') // 生成文件的唯一tag标识
-const responseTime = require('koa-response-time')
-
-
+const static = require("koa-static");
+const conditional = require("koa-conditional-get"); // 走协商缓存时 判断文件是否新鲜 是否有变化
+const etag = require("koa-etag"); // 生成文件的唯一tag标识
+const responseTime = require("koa-response-time");
+const sequelize = require("./core/database/mariadb");
+const Api = require("./core/models/api");
+const Worksapce = require("./core/models/workspace");
+const pageHelper = require("./core/middleware/query-helper")
 
 // 记录日志、统计时间的中间件
 // app.use(async (ctx, next) => {
@@ -27,13 +29,15 @@ const responseTime = require('koa-response-time')
 //   console.log("=============================");
 // });
 
-app.use(responseTime())
+app.use(responseTime());
 
-app.use(conditional())
-app.use(etag())
-app.use(static('public', {
-  maxAge: 20 * 1000 // 缓存时间 10秒钟 主要用于测试
-}))
+app.use(conditional());
+app.use(etag());
+app.use(
+  static("public", {
+    maxAge: 20 * 1000, // 缓存时间 10秒钟 主要用于测试
+  })
+);
 
 app.use(
   koaBody({
@@ -41,12 +45,16 @@ app.use(
   })
 );
 
+app.use(pageHelper())
+
 app.use(async (ctx, next) => {
   let result = await next();
+
   if (result) {
     if (result instanceof Result) {
       result = result.toJSON();
     }
+   
     ctx.body = result;
   } else {
     // result = new Result().setMessage("接口未实现").toJSON();
@@ -63,6 +71,29 @@ app.use(async (ctx, next) => {
 });
 
 let PORT = 8999;
-app.listen(PORT, () => {
-  console.log(`测试服务${PORT}启动成功！`);
-});
+const bootstrap = async () => {
+  try {
+    await sequelize.authenticate();
+    console.log("数据库连接成功");
+
+    app.listen(PORT, async () => {
+      console.log(`服务${PORT}启动成功！`);
+    });
+
+    // await sequelize.sync({ force: true });
+
+    // let workspace = await Worksapce.create({});
+
+    // let api = await Api.create({
+    //   workspace_id: workspace.id,
+    //   method: "GET",
+    //   url: "/",
+    //   code: "ctx.body=123",
+    // });
+    // console.log(workspace.id);
+    // console.log(api)
+  } catch (error) {
+    console.log(error);
+  }
+};
+bootstrap();
