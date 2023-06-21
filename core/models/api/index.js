@@ -1,10 +1,10 @@
 const { Model, DataTypes } = require("sequelize");
-const Workspace = require("../workspace");
-const sequelize = require("../../database/mariadb");
+const sequelize = require("../../database/sequelize");
+const WorkspaceModel = require("../workspace");
 
-class Api extends Model {}
+class ApiModel extends Model {}
 
-Api.init(
+ApiModel.init(
   {
     id: {
       type: DataTypes.BIGINT.UNSIGNED,
@@ -12,16 +12,6 @@ Api.init(
       autoIncrement: true,
       allowNull: false,
       comment: "ID",
-    },
-    workspaceId: {
-      type: DataTypes.BIGINT.UNSIGNED,
-      unique: "compositeIndex",
-      allowNull: false,
-      comment: "所属空间ID",
-      references: {
-        model: Workspace,
-        key: "id",
-      },
     },
     method: {
       type: DataTypes.STRING(20),
@@ -51,10 +41,27 @@ Api.init(
   {
     modelName: "api",
     sequelize,
-    timestamps: true,
-    freezeTableName: true,
-    underscored: true // 把所有的驼峰命名 转换成下划线名称 
   }
 );
 
-module.exports = Api;
+// 模型建立关联
+WorkspaceModel.hasMany(ApiModel, {
+  foreignKey: {
+    name: "workspaceId",
+    type: DataTypes.BIGINT.UNSIGNED,
+    unique: "compositeIndex",
+    allowNull: false,
+    comment: "所属空间ID",
+  },
+});
+ApiModel.belongsTo(WorkspaceModel);
+
+(async () => {
+  try {
+    await ApiModel.sync();
+  } catch (err) {
+    console.log(err);
+  }
+})();
+
+module.exports = ApiModel;

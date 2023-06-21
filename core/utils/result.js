@@ -1,5 +1,20 @@
 const only = require("only");
 
+function convertData(data) {
+  if (typeof data != "object") {
+    return data;
+  }
+
+  for (let key in data) {
+    if (typeof data[key] == "bigint") {
+      data[key] = data[key].toString();
+    } else if (typeof data[key] == "object") {
+      data[key] = convertData(data[key]);
+    }
+  }
+  return data;
+}
+
 class Result {
   success = false;
   data = null;
@@ -28,6 +43,7 @@ class Result {
   }
 
   toJSON() {
+    // this.data = convertData(this.data);
     return only(this, ["code", "success", "data", "message"]);
   }
 }

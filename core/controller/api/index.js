@@ -1,18 +1,16 @@
-const { match } = require("path-to-regexp");
 const Result = require("../../utils/result");
 const RouterManager = require("../../router/index");
 const apiService = require("../../service/api");
 
 module.exports = {
-  async create(ctx) {
+  async createInWorkspace(ctx) {
     const { workspace } = ctx.params;
     const { method, url, code } = ctx.request.body;
     const result = new Result();
 
-    console.log
     let api;
     try {
-      api = await apiService.create(workspace, {
+      api = await apiService.createInWorkspace(workspace, {
         method,
         url,
         code,
@@ -30,7 +28,7 @@ module.exports = {
     return result;
   },
 
-  async update(ctx) {
+  async updateInWorkspace(ctx) {
     let { workspace, id } = ctx.params;
     const { method, url, code } = ctx.request.body;
     const result = new Result();
@@ -38,7 +36,8 @@ module.exports = {
     let api;
 
     try {
-      api = await apiService.update(id, {
+      api = await apiService.updateInWorkspace(workspace, {
+        id,
         method,
         url,
         code,
@@ -58,7 +57,7 @@ module.exports = {
     return result;
   },
 
-  async findById(ctx) {
+  async findByIdInWorkspace(ctx) {
     const { id } = ctx.params;
     const result = new Result();
     let api;
@@ -72,7 +71,7 @@ module.exports = {
     return result.setMessage("查询成功");
   },
 
-  async findAll(ctx) {
+  async findAndCountAll(ctx) {
     const result = new Result();
     let res;
     try {
@@ -86,7 +85,7 @@ module.exports = {
     return result.setMessage("查询成功");
   },
 
-  async findAllByWorkspace(ctx) {
+  async findAndCountAllByWorkspace(ctx) {
     const { workspace } = ctx.params;
     const result = new Result();
     let res;
@@ -108,14 +107,27 @@ module.exports = {
     const { id } = ctx.params;
 
     const result = new Result();
-    let res;
     try {
-      res = await apiService.removeByWorkspace(id);
+      await apiService.remove(id);
     } catch (err) {
       return result.setMessage(err.message);
     }
 
-    result.setSuccess(true).setData(route);
+    result.setSuccess(true);
     return result.setMessage("删除成功");
   },
+
+  async removeInWorkspace(ctx) {
+    const { workspace } = ctx.params;
+    const result = new Result();
+    let res;
+
+    try {
+      await apiService.removeInWorkspace(workspace, id);
+    } catch (err) {
+      return result.setMessage(err.message);
+    }
+    result.setSuccess(true);
+    return result.setMessage("删除成功");
+  }
 };

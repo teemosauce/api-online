@@ -6,12 +6,13 @@ module.exports = {
     let workspace;
     try {
       workspace = await workspaceService.create();
-      console.log(111111);
     } catch (error) {
-      console.log(error);
+      console.log(error)
       result.setMessage(error.message);
     }
-    console.log(workspace);
+
+    console.log(workspace)
+
     if (workspace) {
       result.setSuccess(true).setData(workspace);
       result.setMessage("生成工作空间成功！");
@@ -19,7 +20,7 @@ module.exports = {
     return result;
   },
 
-  async query(ctx) {
+  async findAndCountAll(ctx) {
     const result = new Result();
     let res;
     try {

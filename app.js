@@ -1,5 +1,5 @@
 const Koa = require("koa");
-const router = require("./core/router/index");
+const router = require("./core/router");
 const { koaBody } = require("koa-body");
 const Result = require("./core/utils/result");
 const app = new Koa();
@@ -7,10 +7,9 @@ const static = require("koa-static");
 const conditional = require("koa-conditional-get"); // 走协商缓存时 判断文件是否新鲜 是否有变化
 const etag = require("koa-etag"); // 生成文件的唯一tag标识
 const responseTime = require("koa-response-time");
-const sequelize = require("./core/database/mariadb");
-const Api = require("./core/models/api");
-const Worksapce = require("./core/models/workspace");
-const pageHelper = require("./core/middleware/query-helper")
+const pageHelper = require("./core/middleware/query-helper");
+const sequelize = require("./core/database/sequelize");
+const dynamicRoute = require("./core/middleware/dynamic-route");
 
 // 记录日志、统计时间的中间件
 // app.use(async (ctx, next) => {
@@ -45,7 +44,13 @@ app.use(
   })
 );
 
-app.use(pageHelper())
+app.use(
+  dynamicRoute({
+    prefix: "/space",
+  })
+);
+
+app.use(pageHelper());
 
 app.use(async (ctx, next) => {
   let result = await next();
@@ -54,7 +59,7 @@ app.use(async (ctx, next) => {
     if (result instanceof Result) {
       result = result.toJSON();
     }
-   
+
     ctx.body = result;
   } else {
     // result = new Result().setMessage("接口未实现").toJSON();
@@ -75,25 +80,14 @@ const bootstrap = async () => {
   try {
     await sequelize.authenticate();
     console.log("数据库连接成功");
-
-    app.listen(PORT, async () => {
-      console.log(`服务${PORT}启动成功！`);
-    });
-
-    // await sequelize.sync({ force: true });
-
-    // let workspace = await Worksapce.create({});
-
-    // let api = await Api.create({
-    //   workspace_id: workspace.id,
-    //   method: "GET",
-    //   url: "/",
-    //   code: "ctx.body=123",
-    // });
-    // console.log(workspace.id);
-    // console.log(api)
-  } catch (error) {
-    console.log(error);
+  } catch (err) {
+    console.log("数据库连接失败，自动退出");
+    console.log(err);
+    process.exit();
   }
+
+  app.listen(PORT, async () => {
+    console.log(`服务${PORT}启动成功！`);
+  });
 };
 bootstrap();

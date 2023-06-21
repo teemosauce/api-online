@@ -12,6 +12,6 @@ const router = new KoaRouter({
 // 该接口加个限制 单机一天只能调用一次
 router.post("/create", WorkspaceController.create);
 
-router.get("/", WorkspaceController.query);
+router.get("/", WorkspaceController.findAndCountAll);
 
 module.exports = router.routes();
